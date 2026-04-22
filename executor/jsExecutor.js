@@ -14,21 +14,35 @@ const executeJS = ({ codePath, inputPath, codeFile }) => {
 
     const command = `docker run --rm --memory="100m" --cpus="0.5" -v "${dockerPath}:/app" node:18 sh -c "${runCommand}"`;
 
+    const start = Date.now(); // ✅ added
+
     exec(command, { timeout: 20000 }, (error, stdout, stderr) => {
+      const end = Date.now(); // ✅ added
+
       try {
         if (fs.existsSync(codePath)) fs.unlinkSync(codePath);
         if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
       } catch {}
 
       if (error) {
-        return reject(stderr || error.message);
+        return reject({
+          status: error.killed ? "timeout" : "error",
+          error: stderr || error.message,
+        });
       }
 
       if (stderr) {
-        return reject(stderr);
+        return reject({
+          status: "runtime_error",
+          error: stderr,
+        });
       }
 
-      resolve(stdout);
+      resolve({
+        output: stdout,
+        executionTime: `${end - start} ms`, // ✅ added
+        status: "success",
+      });
     });
   });
 };
